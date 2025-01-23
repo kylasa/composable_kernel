@@ -181,7 +181,6 @@ CK_TILE_DEVICE void atomic_add_g(T* p_dst, const thread_buffer<T, N>& x)
     {
         if constexpr(N == 4)
         {
-            // Sudhir
             // Writing 4 fp8_t's to the destination 32 bits
             // which is same as one bf16x2_t in terms
             atomic_add(c_style_pointer_cast<fp8x4_t*>(p_dst), x.template get_as<fp8x4_t>()[I0]);
