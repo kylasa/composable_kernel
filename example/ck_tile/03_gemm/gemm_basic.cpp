@@ -27,9 +27,9 @@ float gemm_calc(const ck_tile::GemmHostArgs& args, const ck_tile::stream_config&
     constexpr int kBlockPerCu = 1;
 
     // This part comes from the Codegen
-    constexpr ck_tile::index_t M_Tile = 128;
-    constexpr ck_tile::index_t N_Tile = 128;
-    constexpr ck_tile::index_t K_Tile = 32;
+    constexpr ck_tile::index_t M_Tile = 256;
+    constexpr ck_tile::index_t N_Tile = 256;
+    constexpr ck_tile::index_t K_Tile = 64;
 
     constexpr ck_tile::index_t M_Warp = 2;
     constexpr ck_tile::index_t N_Warp = 2;
@@ -37,7 +37,7 @@ float gemm_calc(const ck_tile::GemmHostArgs& args, const ck_tile::stream_config&
 
     constexpr ck_tile::index_t M_Warp_Tile = 32;
     constexpr ck_tile::index_t N_Warp_Tile = 32;
-    constexpr ck_tile::index_t K_Warp_Tile = 8;
+    constexpr ck_tile::index_t K_Warp_Tile = 16;
 
     // Whether doing the CShuffle (transpose before the global memory), depending on the output
     // layout.

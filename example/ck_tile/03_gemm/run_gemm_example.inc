@@ -22,7 +22,8 @@ auto calculate_rtol_atol(const ck_tile::index_t K,
     return ck_tile::make_tuple(std::max(rtol, rtol_split_k), std::max(atol, atol_split_k));
 }
 
-template <typename ALayout, typename BLayout, typename CLayout>
+template <typename ADataType, typename BDataType, typename AccDataType, typename CDataType, 
+           typename ALayout, typename BLayout, typename CLayout>
 float invoke_gemm(ck_tile::DeviceMem& a_m_k_dev_buf,
                   ck_tile::DeviceMem& b_k_n_dev_buf,
                   ck_tile::DeviceMem& c_m_n_dev_buf,
@@ -59,13 +60,14 @@ float invoke_gemm(ck_tile::DeviceMem& a_m_k_dev_buf,
 
     std::cout << "Run Gemm kernel with M =" << M << " N =" << N << " K =" << K
               << " StrideA =" << stride_A << " StrideB =" << stride_B << " StrideC =" << stride_C
+              << " A_Layout =" << ALayout::name << " B_Layout =" << BLayout::name << " C_Layout =" << CLayout::name
               << " : " << ave_time << " ms, " << tflops << " TFlops, " << gb_per_sec << " GB/s, "
               << std::endl;
 
     return ave_time;
 }
 
-template <typename ALayout, typename BLayout, typename CLayout>
+template <typename prec_type, typename ALayout, typename BLayout, typename CLayout>
 int run_gemm_example_with_layouts(int argc,
                                   char* argv[],
                                   const ALayout a_layout                  = ALayout{},
@@ -75,6 +77,11 @@ int run_gemm_example_with_layouts(int argc,
     auto [result, arg_parser] = create_args(argc, argv);
     if(!result)
         return -1;
+
+    using ADataType = typename GemmBasicTypeConfig<prec_type>::ADataType;
+    using BDataType = typename GemmBasicTypeConfig<prec_type>::BDataType;
+    using CDataType = typename GemmBasicTypeConfig<prec_type>::CDataType;
+    using AccDataType = typename GemmBasicTypeConfig<prec_type>::AccDataType;
 
     ck_tile::index_t M = arg_parser.get_int("m");
     ck_tile::index_t N = arg_parser.get_int("n");
@@ -144,7 +151,8 @@ int run_gemm_example_with_layouts(int argc,
     c_m_n_dev_buf.SetZero();
     c_m_n_dev_result.SetZero();
 
-    invoke_gemm<ALayout, BLayout, CLayout>(a_m_k_dev_buf,
+        invoke_gemm<ADataType, BDataType, AccDataType, CDataType, 
+                    ALayout, BLayout, CLayout>(a_m_k_dev_buf,
                                            b_k_n_dev_buf,
                                            c_m_n_dev_buf,
                                            M,
@@ -252,16 +260,55 @@ int run_gemm_example(int argc, char* argv[])
     using Row = ck_tile::tensor_layout::gemm::RowMajor;
     using Col = ck_tile::tensor_layout::gemm::ColumnMajor;
 
+    std::string precision = arg_parser.get_str("prec");
     std::string a_layout = arg_parser.get_str("a_layout");
     std::string b_layout = arg_parser.get_str("b_layout");
 
-    if(a_layout == "R" && b_layout == "R")
+ if(a_layout == "R" && b_layout == "R")
     {
-        return run_gemm_example_with_layouts(argc, argv, Row{}, Row{}, Row{});
+        if (precision == "fp16")
+        {
+            return run_gemm_example_with_layouts<ck_tile::half_t>(argc, argv, Row{}, Row{}, Row{});
+        }
+        else if (precision == "bf16")
+        {
+            return run_gemm_example_with_layouts<ck_tile::bf16_t>(argc, argv, Row{}, Row{}, Row{});
+        }
+        else if (precision == "fp8")
+        {
+            return run_gemm_example_with_layouts<ck_tile::fp8_t>(argc, argv, Row{}, Row{}, Row{});
+        }
+        else if (precision == "bf8")
+        {
+            return run_gemm_example_with_layouts<ck_tile::bf8_t>(argc, argv, Row{}, Row{}, Row{});
+        }
+        else 
+        {
+            throw std::runtime_error("Unsupported precision!");
+        }        
     }
     else if(a_layout == "R" && b_layout == "C")
     {
-        return run_gemm_example_with_layouts(argc, argv, Row{}, Col{}, Row{});
+        if (precision == "fp16")
+        {
+            return run_gemm_example_with_layouts<ck_tile::half_t>(argc, argv, Row{}, Col{}, Row{});
+        }
+        else if (precision == "bf16")
+        {
+            return run_gemm_example_with_layouts<ck_tile::bf16_t>(argc, argv, Row{}, Col{}, Row{});
+        }
+        else if (precision == "fp8")
+        {
+            return run_gemm_example_with_layouts<ck_tile::fp8_t>(argc, argv, Row{}, Col{}, Row{});
+        }
+        else if (precision == "bf8")
+        {
+            return run_gemm_example_with_layouts<ck_tile::bf8_t>(argc, argv, Row{}, Col{}, Row{});
+        }
+        else 
+        {
+            throw std::runtime_error("Unsupported precision!");
+        }        
     }
     // TODO: Fixme: with latest changes to GemmPipelineAGmemBGmemCRegV1DefaultPolicy below do not
     // work.
